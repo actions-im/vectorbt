@@ -38,6 +38,8 @@ setup(
         'schedule',
         'requests',
         'pytz',
+        'fredapi',
+        'lxml',
         'typing_extensions; python_version < "3.8"',
         'mypy_extensions'
     ],

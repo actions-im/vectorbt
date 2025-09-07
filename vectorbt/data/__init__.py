@@ -5,6 +5,9 @@
 
 from vectorbt.data.base import symbol_dict, Data
 from vectorbt.data.custom import SyntheticData, GBMData, YFData, BinanceData, CCXTData, AlpacaData
+from vectorbt.data.sp500_price import SP500PriceData
+from vectorbt.data.cpi import CPIData
+from vectorbt.data.sp500_earnings import SPEarningsData
 from vectorbt.data.updater import DataUpdater
 
 __all__ = [
@@ -16,7 +19,10 @@ __all__ = [
     'YFData',
     'BinanceData',
     'CCXTData',
-    'AlpacaData'
+    'AlpacaData',
+    'SP500PriceData',
+    'CPIData',
+    'SPEarningsData'
 ]
 
 __pdoc__ = {k: False for k in __all__}

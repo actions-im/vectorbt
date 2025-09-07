@@ -5,6 +5,7 @@
 
 import numpy as np
 import plotly.graph_objects as go
+from numba import njit
 
 from vectorbt import _typing as tp
 from vectorbt.indicators.configs import flex_col_param_config, flex_elem_param_config
@@ -791,3 +792,64 @@ class _OHLCSTCX(OHLCSTCX):
 
 setattr(OHLCSTCX, '__doc__', _OHLCSTCX.__doc__)
 setattr(OHLCSTCX, 'plot', _OHLCSTCX.plot)
+
+
+# ############# SHILLER CAPE ############# #
+
+
+@njit
+def shiller_cape_signal_nb(price: np.ndarray, earnings: np.ndarray, cpi: np.ndarray, cape: np.ndarray,
+                           lower: float, upper: float, window: int) -> tp.Tuple[np.ndarray, np.ndarray]:
+    """Compute CAPE from inputs and return threshold entries/exits."""
+    n, m = price.shape
+    entries = np.zeros((n, m), dtype=np.bool_)
+    exits = np.zeros((n, m), dtype=np.bool_)
+    for col in range(m):
+        for i in range(n):
+            if i < window - 1 or np.isnan(price[i, col]) or np.isnan(earnings[i, col]) or np.isnan(cpi[i, col]):
+                cape[i, col] = np.nan
+                continue
+            cpi_now = cpi[i, col]
+            total = 0.0
+            for j in range(window):
+                idx = i - j
+                total += earnings[idx, col] * (cpi_now / cpi[idx, col])
+            avg_real = total / window
+            cape[i, col] = price[i, col] / avg_real
+            entries[i, col] = cape[i, col] <= lower
+            exits[i, col] = cape[i, col] >= upper
+    return entries, exits
+
+
+SHILLER_CAPE = SignalFactory(
+    class_name='SHILLER_CAPE',
+    module_name=__name__,
+    short_name='shiller_cape',
+    input_names=['price', 'earnings', 'cpi'],
+    in_output_names=['cape'],
+    param_names=['lower', 'upper'],
+    attr_settings=dict(cape=dict(dtype=np.float64)),
+    mode='both',
+).from_apply_func(
+    shiller_cape_signal_nb,
+    param_settings=dict(
+        lower=flex_col_param_config,
+        upper=flex_col_param_config
+    ),
+    kwargs_to_args=['window'],
+    window=120
+)
+
+
+class _SHILLER_CAPE(SHILLER_CAPE):
+    """Shiller CAPE threshold signal generator.
+
+    Computes the CAPE ratio from `price`, `earnings`, and `cpi` and generates `entries`
+    when CAPE is less than or equal to `lower` and `exits` when CAPE is greater than or equal to `upper`.
+    The computed CAPE series is available via the `cape` attribute.
+    """
+
+    pass
+
+
+setattr(SHILLER_CAPE, '__doc__', _SHILLER_CAPE.__doc__)
